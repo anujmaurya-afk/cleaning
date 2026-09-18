@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRIGHT File Cleaner</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+    h1 { font-size: 1.4rem; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 20px; margin-bottom: 24px; }
+    .flash { background: #fff3cd; border: 1px solid #ffe08a; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
+    button { background: #1a56db; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1543a8; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    td, th { text-align: left; padding: 6px 4px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    a.dl { color: #1a56db; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Upload → Clean → Download (stored on Google Drive)</h1>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card">
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
+      <button type="submit">Upload & Clean</button>
+    </form>
+  </div>
+
+  {% if just_processed %}
+  <div class="card">
+    <strong>Your file is ready.</strong><br>
+    <a class="dl" href="/download/{{ just_processed.id }}">Download {{ just_processed.name }}</a>
+  </div>
+  {% endif %}
+
+  {% if processed and not just_processed %}
+  <div class="card">
+    <h3>Processed files (in Drive)</h3>
+    <table>
+      {% for f in processed %}
+      <tr><td>{{ f.name }}</td><td>{{ f.createdTime }}</td><td><a class="dl" href="/download/{{ f.id }}">Download</a></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  {% if uploads %}
+  <div class="card">
+    <h3>Raw uploads (in Drive)</h3>
+    <table>
+      {% for f in uploads %}
+      <tr><td>{{ f.name }}</td><td>{{ f.createdTime }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+</body>
+</html>
