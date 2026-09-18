@@ -12,7 +12,11 @@ database.
    `clean-framework-508311-k5-e9e0b32ccd1b.json`, email:
    `cleaning-files@clean-framework-508311-k5.iam.gserviceaccount.com`.
 2. **Copy the key file into this project folder** (next to `app.py`) so
-   `.env`'s `GOOGLE_SERVICE_ACCOUNT_FILE` can find it.
+   `.env`'s `GOOGLE_SERVICE_ACCOUNT_FILE` can find it locally. When you
+   deploy (e.g. to Render), you don't need to change this value or type any
+   path — `drive_utils.py` automatically checks Render's fixed secret-file
+   location too, so the same `.env` value works in both places. See
+   "Deploying" below.
 3. **Share both Drive folders** with
    `cleaning-files@clean-framework-508311-k5.iam.gserviceaccount.com` as
    **Editor** — this is required, service accounts see nothing that isn't
@@ -56,15 +60,24 @@ your Drive `processed` folder.
 
 ## 4. Deploy
 
-Any small host works since there's no DB to provision — e.g. Render, Railway,
-Fly.io, or a plain VM with gunicorn:
+Any small host works since there's no DB to provision. A `Procfile` is
+included so Render/Railway auto-detect the start command
+(`gunicorn -w 2 -b 0.0.0.0:$PORT app:app`).
 
-```bash
-gunicorn -w 2 -b 0.0.0.0:$PORT app:app
-```
-
-Set the same environment variables on the host, and upload
-`service_account.json` as a secret file (don't commit it to git).
+On Render specifically:
+1. Push this repo to GitHub (`.gitignore` already keeps `.env` and the
+   service account JSON out of it).
+2. New Web Service → connect the repo → it picks up the `Procfile`
+   automatically.
+3. In Environment → add the variables from `.env` (skip
+   `GOOGLE_SERVICE_ACCOUNT_FILE` if you're keeping the same filename — the
+   default already matches; only set it if you rename the key file).
+4. In Environment → Secret Files → upload
+   `clean-framework-508311-k5-e9e0b32ccd1b.json` as-is (don't set a custom
+   mount path). Render always mounts it at
+   `/etc/secrets/clean-framework-508311-k5-e9e0b32ccd1b.json`, and
+   `drive_utils.py` checks that exact location automatically — nothing else
+   to configure.
 
 ## Files
 

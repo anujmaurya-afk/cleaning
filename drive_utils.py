@@ -19,7 +19,23 @@ from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
-SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
+# Name (or path) of the service account key file.
+_configured_name = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
+_just_filename = os.path.basename(_configured_name)
+
+# Render mounts uploaded "Secret Files" at /etc/secrets/<original filename>,
+# automatically, no manual path typing needed. Locally (your laptop), the
+# same file just sits next to app.py. Check both so this works unchanged in
+# either place — first whatever exact path/name was configured, then
+# Render's fixed secret-file location, then the plain filename in this
+# folder.
+_candidates = [
+    _configured_name,
+    os.path.join("/etc/secrets", _just_filename),
+    _just_filename,
+]
+SERVICE_ACCOUNT_FILE = next((p for p in _candidates if os.path.exists(p)), _configured_name)
+
 UPLOADS_FOLDER_ID = os.environ.get("DRIVE_UPLOADS_FOLDER_ID")
 PROCESSED_FOLDER_ID = os.environ.get("DRIVE_PROCESSED_FOLDER_ID")
 
