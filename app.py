@@ -69,7 +69,7 @@ def upload():
     # 2. Run the cleaning logic.
     try:
         df = read_any(raw_bytes, file.filename)
-        cleaned = clean_dataframe(df)
+        cleaned, issues = clean_dataframe(df)
     except Exception as e:
         flash(f"Processing failed: {e}")
         return redirect(url_for("index"))
@@ -85,14 +85,46 @@ def upload():
         folder_id=drive_utils.PROCESSED_FOLDER_ID,
     )
 
-    flash(f"Done — {len(cleaned)} rows cleaned. Download ready below.")
-    return redirect(url_for("download_page", file_id=processed_meta["id"]))
+    # 4. If any rows had problems (bad phone numbers, missing LAN, etc.),
+    #    upload a matching errors CSV so you can see exactly what to fix,
+    #    and stash a preview so we can show it right on the results page.
+    errors_meta = None
+    issues_preview = []
+    if len(issues) > 0:
+        err_buffer = io.StringIO()
+        issues.to_csv(err_buffer, index=False)
+        err_name = f"errors_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename.rsplit('.', 1)[0]}.csv"
+        errors_meta = drive_utils.upload_bytes(
+            data=err_buffer.getvalue().encode("utf-8"),
+            filename=err_name,
+            mimetype="text/csv",
+            folder_id=drive_utils.PROCESSED_FOLDER_ID,
+        )
+        issues_preview = issues.head(50).to_dict("records")
+        flash(f"Done — {len(cleaned)} row(s) cleaned, {len(issues)} row(s) flagged with issues.")
+    else:
+        flash(f"Done — {len(cleaned)} row(s) cleaned, no issues found.")
+
+    return render_template(
+        "index.html",
+        uploads=[],
+        processed=[],
+        just_processed=processed_meta,
+        errors_meta=errors_meta,
+        issues_preview=issues_preview,
+        issues_total=len(issues),
+        cleaned_count=len(cleaned),
+    )
 
 
 @app.route("/result/<file_id>")
 def download_page(file_id):
     meta = drive_utils.get_file_metadata(file_id)
-    return render_template("index.html", uploads=[], processed=[meta], just_processed=meta)
+    errors_id = request.args.get("errors_id")
+    errors_meta = drive_utils.get_file_metadata(errors_id) if errors_id else None
+    return render_template(
+        "index.html", uploads=[], processed=[meta], just_processed=meta, errors_meta=errors_meta
+    )
 
 
 @app.route("/download/<file_id>")

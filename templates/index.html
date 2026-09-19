@@ -2,21 +2,101 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CRIGHT File Cleaner</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
-    h1 { font-size: 1.4rem; }
-    .card { border: 1px solid #ddd; border-radius: 10px; padding: 20px; margin-bottom: 24px; }
-    .flash { background: #fff3cd; border: 1px solid #ffe08a; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
-    button { background: #1a56db; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #1543a8; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    td, th { text-align: left; padding: 6px 4px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-    a.dl { color: #1a56db; text-decoration: none; }
+    :root {
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #059669;
+      --red: #dc2626;
+      --amber: #d97706;
+      --border: #e5e7eb;
+      --bg: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    header { margin-bottom: 28px; }
+    h1 { font-size: 1.5rem; margin: 0 0 4px; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin: 0; }
+
+    .flash {
+      background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+      padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; font-size: 0.92rem;
+    }
+
+    .card {
+      background: white; border: 1px solid var(--border); border-radius: 14px;
+      padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .card h2, .card h3 { margin-top: 0; }
+
+    /* Upload dropzone */
+    #dropzone {
+      border: 2px dashed #cbd5e1; border-radius: 12px; padding: 32px 20px;
+      text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    #dropzone:hover, #dropzone.drag { border-color: var(--blue); background: #f0f6ff; }
+    #dropzone p { margin: 4px 0; color: var(--muted); font-size: 0.9rem; }
+    #dropzone strong { color: var(--text); }
+    #file-input { display: none; }
+    #file-name { margin-top: 10px; font-size: 0.9rem; color: var(--blue-dark); font-weight: 600; min-height: 1.2em; }
+
+    button.submit {
+      background: var(--blue); color: white; border: none; padding: 12px 22px;
+      border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600;
+      margin-top: 16px; width: 100%;
+    }
+    button.submit:hover { background: var(--blue-dark); }
+    button.submit:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    /* Summary stats */
+    .stats { display: flex; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 120px; border-radius: 10px; padding: 14px 16px; }
+    .stat .num { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+    .stat .label { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    .stat.ok { background: #ecfdf5; }
+    .stat.ok .num { color: var(--green); }
+    .stat.warn { background: #fffbeb; }
+    .stat.warn .num { color: var(--amber); }
+
+    a.dl-btn {
+      display: inline-block; background: var(--green); color: white; text-decoration: none;
+      padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; margin-top: 14px;
+    }
+    a.dl-btn:hover { background: #047857; }
+    a.dl-btn.errors { background: var(--amber); margin-left: 10px; }
+    a.dl-btn.errors:hover { background: #b45309; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.85rem; }
+    th { text-align: left; padding: 8px 6px; border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 600; }
+    td { padding: 8px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .issue-badge {
+      display: inline-block; background: #fef2f2; color: var(--red);
+      padding: 2px 8px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+    }
+    .muted-note { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
+
+    h3.history { font-size: 1rem; color: var(--muted); margin-top: 32px; }
+    a.dl { color: var(--blue); text-decoration: none; font-size: 0.88rem; }
+    a.dl:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>Upload → Clean → Download (stored on Google Drive)</h1>
+  <header>
+    <h1>CRIGHT File Cleaner</h1>
+    <p class="subtitle">Upload → clean → download. Files live in Google Drive — no database.</p>
+  </header>
 
   {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -25,22 +105,68 @@
   {% endwith %}
 
   <div class="card">
-    <form action="/upload" method="post" enctype="multipart/form-data">
-      <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
-      <button type="submit">Upload & Clean</button>
+    <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+      <div id="dropzone">
+        <p><strong>Click to choose a file</strong> or drag one here</p>
+        <p>.csv, .xlsx, or .xls</p>
+        <div id="file-name"></div>
+      </div>
+      <input id="file-input" type="file" name="file" accept=".csv,.xlsx,.xls" required>
+      <button class="submit" id="submit-btn" type="submit">Upload &amp; Clean</button>
     </form>
   </div>
 
   {% if just_processed %}
   <div class="card">
-    <strong>Your file is ready.</strong><br>
-    <a class="dl" href="/download/{{ just_processed.id }}">Download {{ just_processed.name }}</a>
+    <h2>Result</h2>
+    <div class="stats">
+      <div class="stat ok">
+        <div class="num">{{ cleaned_count if cleaned_count is not none else '—' }}</div>
+        <div class="label">Rows cleaned</div>
+      </div>
+      <div class="stat warn">
+        <div class="num">{{ issues_total if issues_total is not none else 0 }}</div>
+        <div class="label">Rows flagged</div>
+      </div>
+    </div>
+
+    <a class="dl-btn" href="/download/{{ just_processed.id }}">Download cleaned file</a>
+    {% if errors_meta %}
+      <a class="dl-btn errors" href="/download/{{ errors_meta.id }}">Download errors file</a>
+    {% endif %}
+
+    {% if issues_preview %}
+    <h3 style="margin-top:24px;">What was flagged</h3>
+    <table>
+      <tr>
+        <th>Row</th>
+        <th>LAN</th>
+        <th>Customer</th>
+        <th>Mobile (raw)</th>
+        <th>Issue</th>
+        <th>Detail</th>
+      </tr>
+      {% for i in issues_preview %}
+      <tr>
+        <td>{{ i['source_row'] }}</td>
+        <td>{{ i['LAN'] }}</td>
+        <td>{{ i['Customer Name'] }}</td>
+        <td>{{ i['Mobile Number (raw)'] }}</td>
+        <td><span class="issue-badge">{{ i['issue'] }}</span></td>
+        <td>{{ i['detail'] }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% if issues_total and issues_total > issues_preview|length %}
+    <p class="muted-note">Showing first {{ issues_preview|length }} of {{ issues_total }} flagged rows — download the errors file for the full list.</p>
+    {% endif %}
+    {% endif %}
   </div>
   {% endif %}
 
   {% if processed and not just_processed %}
   <div class="card">
-    <h3>Processed files (in Drive)</h3>
+    <h3 class="history">Processed files (in Drive)</h3>
     <table>
       {% for f in processed %}
       <tr><td>{{ f.name }}</td><td>{{ f.createdTime }}</td><td><a class="dl" href="/download/{{ f.id }}">Download</a></td></tr>
@@ -51,7 +177,7 @@
 
   {% if uploads %}
   <div class="card">
-    <h3>Raw uploads (in Drive)</h3>
+    <h3 class="history">Raw uploads (in Drive)</h3>
     <table>
       {% for f in uploads %}
       <tr><td>{{ f.name }}</td><td>{{ f.createdTime }}</td></tr>
@@ -59,5 +185,40 @@
     </table>
   </div>
   {% endif %}
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const fileName = document.getElementById('file-name');
+    const form = document.getElementById('upload-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    ['dragenter', 'dragover'].forEach(evt =>
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); })
+    );
+    ['dragleave', 'drop'].forEach(evt =>
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); })
+    );
+    dropzone.addEventListener('drop', e => {
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        updateFileName();
+      }
+    });
+    fileInput.addEventListener('change', updateFileName);
+
+    function updateFileName() {
+      fileName.textContent = fileInput.files.length ? fileInput.files[0].name : '';
+    }
+
+    form.addEventListener('submit', () => {
+      if (fileInput.files.length) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Cleaning…';
+      }
+    });
+  </script>
 </body>
 </html>
