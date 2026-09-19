@@ -101,9 +101,15 @@ def clean_dataframe(df: pd.DataFrame):
     df = df[~no_lan_mask].copy()
 
     # --- Mobile number validation -------------------------------------------
-    df["phone_clean"] = df["Mobile Number"].astype(str).str.replace(r"\D", "", regex=True)
+    # Excel often stores phone numbers as floats (e.g. 8688516093.0). Strip a
+    # trailing ".0" BEFORE removing non-digit characters, otherwise the
+    # decimal point disappears but its "0" stays behind and silently turns a
+    # valid 10-digit number into a fake 11-digit one.
+    raw_phone = df["Mobile Number"].fillna("").astype(str).str.strip()
+    raw_phone = raw_phone.str.replace(r"\.0+$", "", regex=True)
+    df["phone_clean"] = raw_phone.str.replace(r"\D", "", regex=True)
     bad_phone_mask = df["phone_clean"].str.len() != 10
-    for _, row in df[bad_phone_mask].iterrows():
+    for idx, row in df[bad_phone_mask].iterrows():
         digits = row["phone_clean"]
         if digits == "" or digits == "nan":
             reason = "Missing mobile number"
@@ -111,7 +117,7 @@ def clean_dataframe(df: pd.DataFrame):
             reason = "Mobile number too short"
         else:
             reason = "Mobile number too long"
-        issues.append(_issue_row(row, reason, f"got '{row['Mobile Number']}' -> {len(digits)} digits after cleaning"))
+        issues.append(_issue_row(row, reason, f"got '{raw_phone.loc[idx]}' -> {len(digits)} digits after cleaning"))
     df = df[~bad_phone_mask].copy()
     df["Mobile Number"] = df["phone_clean"]
     df.drop(columns=["phone_clean"], inplace=True)
